@@ -1,0 +1,1074 @@
+openapi: 3.0.0
+info:
+  title: さくらの AI Engine Inference API
+  version: 1.0.0
+  description: |-
+    ---
+    Copyright SAKURA internet Inc.
+
+    # さくらの AI Engine チャット生成 / 音声文字起こし / 音声合成 エンドポイント
+
+    ### 基本的な使い方
+    <div class="warning">
+      <ul><li><a href="https://manual.sakura.ad.jp/cloud/ai-engine/02-howto.html">さくらのAI Engine 利用手順 | さくらのクラウド マニュアル</a></li></ul>
+    </div>
+
+    ### APIエンドポイント
+    https://api.ai.sakura.ad.jp
+
+    ---
+servers:
+  - url: https://api.ai.sakura.ad.jp
+
+security:
+  - BearerAuth: []
+
+paths:
+  /v1/chat/completions:
+    post:
+      summary: Create chat completion
+      operationId: createChatCompletion
+      description: チャット生成のリクエストの代表例です。利用するモデルによってはサポートされていないパラメータもありますので、ご注意ください。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - model
+                - messages
+              properties:
+                model:
+                  type: string
+                  description: 利用するチャットモデル名。利用可能なモデルはコントロールパネル等をご確認ください。
+                messages:
+                  type: array
+                  description: チャットのメッセージ履歴。モデルによってサポートしているメッセージタイプが異なります。
+                  items:
+                    anyOf:
+                      - $ref: "#/components/schemas/ChatCompletionRequestDeveloperMessage"
+                      - $ref: "#/components/schemas/ChatCompletionRequestSystemMessage"
+                      - $ref: "#/components/schemas/ChatCompletionRequestUserMessage"
+                      - $ref: "#/components/schemas/ChatCompletionRequestAssistantMessage"
+                      - $ref: "#/components/schemas/ChatCompletionRequestToolMessage"
+                max_tokens:
+                  type: integer
+                  description: 応答生成に使用する最大トークン数。
+                  minimum: 1
+                temperature:
+                  type: number
+                  description: 生成の多様性を制御するパラメータ。値が高いほど多様な応答が生成され、値が低いほど決定的な応答が生成されます。
+                  minimum: 0
+                  maximum: 2
+                  default: 1
+                tool_choice:
+                  description: モデルのツール利用方針を制御する。
+                  $ref: "#/components/schemas/ChatCompletionToolChoiceOption"
+                tools:
+                  type: array
+                  description: モデルが利用可能なツールのリスト。
+                  items:
+                    anyOf:
+                      - $ref: "#/components/schemas/ChatCompletionTool"
+                stream:
+                  type: boolean
+                  description: ストリーミング応答を有効にするかどうか。
+                  default: false
+      responses:
+        "200":
+          description: Success
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "429":
+          description: Rate limited
+        "500":
+          description: Server error
+        "504":
+          description: Server error
+  /v1/responses:
+    post:
+      summary: Create a response
+      operationId: createResponse
+      description: |
+        OpenAI互換のResponses APIエンドポイントです。
+        利用するモデルによってはサポートされていないパラメータもありますので、ご注意ください。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - model
+                - input
+              properties:
+                model:
+                  type: string
+                  description: 使用するモデル名
+                input:
+                  description: |
+                    モデルへの入力。文字列またはメッセージオブジェクトの配列を指定できます
+                  oneOf:
+                    - type: string
+                      description: シンプルなテキスト入力
+                    - type: array
+                      description: メッセージオブジェクトの配列
+                      items:
+                        type: object
+                        properties:
+                          role:
+                            type: string
+                            enum: [user, assistant, system, developer]
+                          content:
+                            description: メッセージの内容
+                instructions:
+                  type: string
+                  description: モデルのコンテキストに挿入されるシステムプロンプト
+                stream:
+                  type: boolean
+                  description: ストリーミング応答を有効にするかどうか
+                  default: false
+                temperature:
+                  type: number
+                  description: 生成の多様性を制御するパラメータ。値が高いほど多様な応答が生成され、値が低いほど決定的な応答が生成されます。
+                  minimum: 0
+                  maximum: 1
+                top_p:
+                  type: number
+                  description: Nucleus sampling の確率質量
+                  minimum: 0
+                  maximum: 1
+                max_output_tokens:
+                  type: integer
+                  description: 生成する最大出力トークン数
+                tools:
+                  description: モデルが呼び出し可能なツールのリスト
+                tool_choice:
+                  description: モデルがツールを使用する方法の制御
+                parallel_tool_calls:
+                  type: boolean
+                  description: 並列ツール呼び出しを許可するかどうか
+                store:
+                  type: boolean
+                  description: 生成されたモデルのレスポンスを保存するかどうか（OpenAI API互換のための項目）。 ※現在は指定可能ですが、システム上は参照されません
+                previous_response_id:
+                  type: string
+                  description: チェーンする前回のレスポンスID（OpenAI API互換のための項目）。 ※現在は指定可能ですが、システム上は参照されません
+                conversation_id:
+                  type: string
+                  description: このレスポンスが属する会話のID（OpenAI API互換のための項目）。 ※現在は指定可能ですが、システム上は参照されません
+                truncation:
+                  type: string
+                  enum: [auto, disabled]
+                  description: モデルレスポンスの切り詰め戦略
+                user:
+                  type: string
+                  description: エンドユーザーを表す一意な識別子
+      responses:
+        "200":
+          description: Success
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "429":
+          description: Rate limited
+        "500":
+          description: Server error
+        "504":
+          description: Server error
+  /v1/messages:
+    post:
+      summary: Create a message
+      operationId: createMessage
+      description: |
+        Anthropic互換のMessages APIエンドポイントです。
+        利用するモデルによってはサポートされていないパラメータもありますので、ご注意ください。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - model
+                - messages
+                - max_tokens
+              properties:
+                model:
+                  type: string
+                  description: 使用するモデル名
+                messages:
+                  type: array
+                  description: 会話を構成するメッセージオブジェクトのリスト
+                  minItems: 1
+                  items:
+                    type: object
+                    required:
+                      - role
+                      - content
+                    properties:
+                      role:
+                        type: string
+                        description: メッセージの役割
+                        enum: [user, assistant]
+                      content:
+                        description: メッセージの内容（文字列またはコンテンツブロックの配列）
+                        oneOf:
+                          - type: string
+                          - type: array
+                            items:
+                              type: object
+                              properties:
+                                type:
+                                  type: string
+                                  enum: [text, image]
+                                text:
+                                  type: string
+                                source:
+                                  type: object
+                                  properties:
+                                    type:
+                                      type: string
+                                      enum: [base64, url]
+                                    media_type:
+                                      type: string
+                                      enum: [image/jpeg, image/png, image/gif, image/webp]
+                                    data:
+                                      type: string
+                                    url:
+                                      type: string
+                max_tokens:
+                  type: integer
+                  description: 生成する最大トークン数
+                system:
+                  type: string
+                  description: システムプロンプト
+                stream:
+                  type: boolean
+                  description: ストリーミング応答を有効にするかどうか
+                  default: false
+                temperature:
+                  type: number
+                  description: 生成の多様性を制御するパラメータ。値が高いほど多様な応答が生成され、値が低いほど決定的な応答が生成されます。
+                  minimum: 0
+                  maximum: 1
+                top_p:
+                  type: number
+                  description: Nucleus sampling の確率質量
+                  minimum: 0
+                  maximum: 1
+                top_k:
+                  type: integer
+                  description: Top-k サンプリングのパラメータ
+                stop_sequences:
+                  type: array
+                  description: 生成を停止すべきシーケンスのリスト
+                  items:
+                    type: string
+                tools:
+                  type: array
+                  description: モデルが呼び出し可能なツールのリスト
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        description: ツールの名前
+                      description:
+                        type: string
+                        description: ツールの説明
+                      input_schema:
+                        type: object
+                        description: ツールの入力スキーマ
+                tool_choice:
+                  description: モデルがツールを使用する方法の制御
+                  oneOf:
+                    - type: object
+                      properties:
+                        type:
+                          type: string
+                          enum: [auto, any, none]
+                        disable_parallel_tool_use:
+                          type: boolean
+                    - type: object
+                      properties:
+                        type:
+                          type: string
+                          enum: [tool]
+                        name:
+                          type: string
+                        disable_parallel_tool_use:
+                          type: boolean
+                metadata:
+                  type: object
+                  description: リクエストに添付するオプションのキーバリューペア
+                  properties:
+                    user_id:
+                      type: string
+                      description: エンドユーザーを表す識別子
+      responses:
+        "200":
+          description: Success
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "429":
+          description: Rate limited
+        "500":
+          description: Server error
+        "504":
+          description: Server error
+  /v1/audio/transcriptions:
+    post:
+      summary: Create a transcription
+      operationId: createTranscription
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: |
+                    Audio file to transcribe. Common formats: aac, m4a, mp3, mp4, ogg, wav etc.
+                model:
+                  type: string
+                  description: Transcription model identifier served by vLLM.
+                  enum:
+                    - whisper-large-v3-turbo
+                language:
+                  type: string
+                  default: "ja"
+                  description: |
+                    Source language hint (BCP-47, e.g. "ja", "en-US").
+                prompt:
+                  type: string
+                  description: Optional decoding/prompt bias (proper nouns, style hints).
+                temperature:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  default: 0
+                  description: Decoding temperature.
+                stream:
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: Transcription created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptionResponse"
+              examples:
+                exampleOk:
+                  summary: Successful transcription
+                  value:
+                    model: whisper-large-v3-turbo
+                    text: "本日はご利用いただきありがとうございます。"
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "429":
+          description: Rate limited
+        "500":
+          description: Server error
+        "504":
+          description: Server error
+  /v1/embeddings:
+    post:
+      summary: Create embeddings
+      operationId: createEmbeddings
+      description: 埋め込みベクトル作成のリクエストの代表例です。利用するモデルによってはサポートされていないパラメータもありますので、ご注意ください。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - model
+                - input
+              properties:
+                model:
+                  type: string
+                  description: 利用する埋め込みモデル名。利用可能なモデルはコントロールパネル等をご確認ください。
+                input:
+                  anyOf:
+                    - type: string
+                      description: 埋め込む入力テキスト
+                    - type: array
+                      items:
+                        type: string
+      responses:
+        "200":
+          description: Embedding created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbeddingResponse"
+              examples:
+                exampleOk:
+                  summary: Successful embedding
+                  value:
+                    model: multilingual-e5-large
+                    data:
+                      - index: 0
+                        object: embedding
+                        embedding: []
+
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "429":
+          description: Rate limited
+        "500":
+          description: Server error
+        "504":
+          description: Server error
+  /v1/audio/speech:
+    post:
+      summary: Create speech (text-to-speech)
+      operationId: createSpeech
+      description: |
+        テキストから音声を生成します（TTS）。
+        - 必須: input, model
+        - instructionsは指定できますが現在は無視されます
+        - response_formatは指定できますが現在は常にwavを返します
+        - streamは非対応です（stream_formatを指定してもストリーミングにはなりません）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpeechRequest"
+            examples:
+              exampleWav:
+                summary: Generate wav speech (response_format is ignored)
+                value:
+                  model: zundamon
+                  voice: normal
+                  input: "こんにちは。"
+                  instructions: "落ち着いたトーンで話して"
+                  response_format: wav
+                  stream_format: sse
+      responses:
+        "200":
+          description: Speech audio generated (always wav)
+          headers:
+            Content-Type:
+              description: Always `audio/wav`.
+              schema:
+                type: string
+                example: audio/wav
+          content:
+            audio/wav:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "429":
+          description: Rate limited
+        "500":
+          description: Server error
+        "504":
+          description: Server error
+
+  /tts/v1/audio_query:
+    post:
+      summary: Create audio query (TTS)
+      operationId: createTtsAudioQuery
+      description: |
+        音声合成用のクエリ(JSON)を作成します。  
+        典型的には、/tts/v1/audio_queryでクエリを作成し、/tts/v1/synthesisに渡して音声(wav)を生成します。  
+        このAPIはVOICEVOX Engine APIの/audio_query仕様を参考にした互換インターフェースを提供します。  
+        公式仕様: https://voicevox.github.io/voicevox_engine/api/
+      parameters:
+        - name: text
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 1000
+          description: 音声合成するテキスト
+        - name: speaker
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+          description: 話者/スタイルID（利用可能な値はコントロールパネル等をご確認ください）
+        - name: enable_katakana_english
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+          description: |
+            カタカナ英語を有効にする。
+        - name: core_version
+          in: query
+          required: false
+          schema:
+            type: string
+          description: |
+            音声合成のバージョン指定。
+            ※現在は指定できますが無視されます。
+      responses:
+        "200":
+          description: Audio query created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TtsAudioQuery"
+              examples:
+                exampleOk:
+                  summary: Successful audio_query response
+                  value:
+                    accent_phrases: []
+                    speedScale: 1.0
+                    pitchScale: 0.0
+                    intonationScale: 1.0
+                    volumeScale: 1.0
+                    prePhonemeLength: 0.1
+                    postPhonemeLength: 0.1
+                    outputSamplingRate: 24000
+                    outputStereo: false
+                    kana: ""
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "429":
+          description: Rate limited
+        "500":
+          description: Server error
+        "504":
+          description: Server error
+  /tts/v1/synthesis:
+    post:
+      summary: Synthesize speech from audio query (TTS)
+      operationId: synthesizeTtsSpeech
+      description: |
+        音声合成を行います。  
+        /tts/v1/audio_query で作成したクエリ(JSON)をリクエストボディに渡して、音声(wav)を生成します。  
+        このAPIはVOICEVOX Engine APIの/synthesis仕様を参考にした互換インターフェースを提供します。  
+        公式仕様: https://voicevox.github.io/voicevox_engine/api/
+      parameters:
+        - name: speaker
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+          description: 話者/スタイルID（利用可能な値はコントロールパネル等をご確認ください）
+        - name: enable_interrogative_upspeak
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+          description: |
+            疑問系のテキストが与えられたら語尾を自動調整する
+        - name: core_version
+          in: query
+          required: false
+          schema:
+            type: string
+          description: |
+            Core Version。
+            ※現在は指定できますが無視されます。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TtsSynthesisRequest"
+            examples:
+              exampleOk:
+                summary: Example synthesis request
+                value:
+                  accent_phrases: []
+                  speedScale: 1
+                  pitchScale: 0
+                  intonationScale: 1
+                  volumeScale: 1
+                  prePhonemeLength: 0.1
+                  postPhonemeLength: 0.1
+                  pauseLength: null
+                  pauseLengthScale: 1
+                  outputSamplingRate: 24000
+                  outputStereo: false
+                  kana: "string"
+      responses:
+        "200":
+          description: Speech audio generated (wav)
+          headers:
+            Content-Type:
+              description: audio/wav
+              schema:
+                type: string
+                example: audio/wav
+          content:
+            audio/wav:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "429":
+          description: Rate limited
+        "500":
+          description: Server error
+        "504":
+          description: Server error
+
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    EmbeddingResponse:
+      type: object
+      required: [model, data]
+      properties:
+        model:
+          type: string
+          description: Model used.
+        data:
+          type: array
+          description:
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              object:
+                type: string
+              embedding:
+                type: array
+                items:
+                  type: float64
+
+    TranscriptionResponse:
+      type: object
+      required: [model, text]
+      properties:
+        model:
+          type: string
+          description: Model used.
+        text:
+          type: string
+          description: Full transcription (plain text).
+    ChatCompletionRequestAssistantMessage:
+      type: object
+      title: Assistant message
+      description: モデルからの応答メッセージ。
+      required:
+        - role
+      properties:
+        content:
+          anyOf:
+            - type: string
+              description: メッセージの内容。
+            - type: array
+              items:
+                $ref: "#/components/schemas/ChatCompletionRequestAssistantMessageContentPart"
+              minItems: 1
+        role:
+          type: string
+          description: メッセージの発言者の役割。
+          enum:
+            - assistant
+    ChatCompletionRequestAssistantMessageContentPart:
+      anyOf:
+        - $ref: "#/components/schemas/ChatCompletionRequestMessageContentPartText"
+    ChatCompletionRequestDeveloperMessage:
+      type: object
+      title: Developer message
+      description: モデルに対する開発者からの指示メッセージ。
+      required:
+        - content
+        - role
+      properties:
+        content:
+          anyOf:
+            - type: string
+              description: メッセージの内容。
+            - type: array
+              items:
+                $ref: "#/components/schemas/ChatCompletionRequestMessageContentPartText"
+              minItems: 1
+        role:
+          type: string
+          description: メッセージの発言者の役割。
+          enum:
+            - developer
+    ChatCompletionRequestMessageContentPartImage:
+      type: object
+      description: 画像コンテンツ。
+      properties:
+        type:
+          type: string
+          enum:
+            - image_url
+        image_url:
+          type: object
+          properties:
+            url:
+              type: string
+              description: MIMEタイプ情報を付与したbase64エンコードされた画像データ。（例："data:image/png;base64,xxx..."）
+              format: uri
+          required:
+            - url
+      required:
+        - type
+        - image_url
+    ChatCompletionRequestMessageContentPartText:
+      type: object
+      description: テキストコンテンツ。
+      properties:
+        type:
+          type: string
+          enum:
+            - text
+        text:
+          type: string
+          description: メッセージの内容。
+      required:
+        - type
+        - text
+    ChatCompletionRequestSystemMessage:
+      type: object
+      title: System message
+      description: モデルに対する開発者からの指示メッセージ。
+      required:
+        - content
+        - role
+      properties:
+        content:
+          description: メッセージの内容
+          anyOf:
+            - type: string
+            - type: array
+              items:
+                $ref: "#/components/schemas/ChatCompletionRequestSystemMessageContentPart"
+              minItems: 1
+        role:
+          type: string
+          description: メッセージの発言者の役割。
+          enum:
+            - system
+    ChatCompletionRequestSystemMessageContentPart:
+      anyOf:
+        - $ref: "#/components/schemas/ChatCompletionRequestMessageContentPartText"
+    ChatCompletionRequestToolMessage:
+      type: object
+      title: Tool message
+      description: ツールの応答メッセージ。
+      properties:
+        role:
+          type: string
+          description: メッセージの発言者の役割。
+          enum:
+            - tool
+        content:
+          description: ツールの応答メッセージの内容。
+          anyOf:
+            - type: string
+              description: メッセージの内容。
+            - type: array
+              items:
+                $ref: "#/components/schemas/ChatCompletionRequestToolMessageContentPart"
+              minItems: 1
+        tool_call_id:
+          type: string
+          description: ツール呼び出しの一意な識別子。
+      required:
+        - role
+        - content
+        - tool_call_id
+    ChatCompletionRequestToolMessageContentPart:
+      anyOf:
+        - $ref: "#/components/schemas/ChatCompletionRequestMessageContentPartText"
+    ChatCompletionRequestUserMessage:
+      type: object
+      title: User message
+      description: ユーザーからのメッセージ。
+      required:
+        - content
+        - role
+      properties:
+        content:
+          anyOf:
+            - type: string
+              description: メッセージの内容。
+            - type: array
+              items:
+                $ref: "#/components/schemas/ChatCompletionRequestUserMessageContentPart"
+              minItems: 1
+        role:
+          type: string
+          description: メッセージの発言者の役割。
+          enum:
+            - user
+    ChatCompletionRequestUserMessageContentPart:
+      anyOf:
+        - $ref: "#/components/schemas/ChatCompletionRequestMessageContentPartText"
+        - $ref: "#/components/schemas/ChatCompletionRequestMessageContentPartImage"
+    ChatCompletionTool:
+      type: object
+      required:
+        - type
+        - function
+      properties:
+        type:
+          type: string
+          enum:
+            - function
+        function:
+          $ref: "#/components/schemas/FunctionObject"
+    ChatCompletionToolChoiceOption:
+      anyOf:
+        - type: string
+          description: モデルにツールを利用させるかどうか。
+          enum:
+            - none
+            - auto
+            - required
+        - $ref: "#/components/schemas/ChatCompletionNamedToolChoice"
+    ChatCompletionNamedToolChoice:
+      type: object
+      description: 特定のツールをモデルに利用させる。
+      required:
+        - type
+        - function
+      properties:
+        type:
+          type: string
+          enum:
+            - function
+        function:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              description: ツールの名前。
+    FunctionObject:
+      type: object
+      properties:
+        description:
+          type: string
+          description: ツールの説明。
+        name:
+          type: string
+          description: ツールの名前。英数字、アンダースコア、ハイフンのみ使用可能で、最大64文字まで指定できます。
+        parameters:
+          type: object
+          description: ツールのパラメータ仕様。
+      required:
+        - name
+    SpeechRequest:
+      type: object
+      required: [model, input]
+      properties:
+        model:
+          type: string
+          description: |
+            音声合成モデル識別子(例：zundamon)
+            利用可能なmodelはコントロールパネル等をご確認ください。
+        input:
+          type: string
+          description: 音声合成するテキスト（最大1000文字程度）
+          minLength: 1
+          maxLength: 1000
+        voice:
+          type: string
+          description: |
+            話者/スタイル(例：normal)
+            利用可能なvoiceはコントロールパネル等をご確認ください。
+        instructions:
+          type: string
+          description: |
+            追加指示(例： 話し方のトーンなど)。
+            ※現在は指定できますが無視されます。
+        response_format:
+          type: string
+          description: |
+            出力フォーマット。
+            ※現在は指定できますが常にwavを返します。
+          default: wav
+          enum: [wav, mp3, ogg, aac, flac]
+        stream_format:
+          type: string
+          description: |
+            ストリーム形式。
+            ※現在は指定できますが無視されます。
+          enum: [sse, jsonl]
+    TtsAudioQuery:
+      type: object
+      required:
+        - accent_phrases
+        - speedScale
+        - pitchScale
+        - intonationScale
+        - volumeScale
+        - prePhonemeLength
+        - postPhonemeLength
+        - outputSamplingRate
+        - outputStereo
+      properties:
+        accent_phrases:
+          type: array
+          description: アクセント句のリスト
+          items:
+            $ref: "#/components/schemas/TtsAccentPhrase"
+        speedScale:
+          type: number
+          description: 全体の話速
+        pitchScale:
+          type: number
+          description: 全体の音高
+        intonationScale:
+          type: number
+          description: 全体の抑揚
+        volumeScale:
+          type: number
+          description: 全体の音量
+
+        prePhonemeLength:
+          type: number
+          description: 音声の前の無音時間
+        postPhonemeLength:
+          type: number
+          description: 音声の後の無音時間
+        pauseLength:
+          description: |
+            句読点などの無音時間。
+            null のときは無視される。デフォルト値は null
+          anyOf:
+            - type: number
+            - type: "null"
+        pauseLengthScale:
+          type: number
+          description: 句読点などの無音時間（倍率）
+          default: 1
+
+        outputSamplingRate:
+          type: integer
+          description: 音声データの出力サンプリングレート
+        outputStereo:
+          type: boolean
+          description: 音声データをステレオ出力するか否か
+
+        kana:
+          type: string
+          description: |
+            読み（かな）。
+            [読み取り専用] AquesTalk風記法によるテキスト。
+            音声合成用のクエリとしては無視される
+    TtsAccentPhrase:
+      type: object
+      required: [moras, accent, is_interrogative]
+      properties:
+        moras:
+          type: array
+          description: モーラ列
+          items:
+            type: object
+            additionalProperties: true
+        accent:
+          type: integer
+          description: アクセント位置
+        pause_mora:
+          type: object
+          description: 無音モーラ
+          nullable: true
+          additionalProperties: true
+        is_interrogative:
+          type: boolean
+          description: 疑問形かどうか
+
+    TtsSynthesisRequest:
+      type: object
+      required:
+        - accent_phrases
+        - speedScale
+        - pitchScale
+        - intonationScale
+        - volumeScale
+        - prePhonemeLength
+        - postPhonemeLength
+        - outputSamplingRate
+        - outputStereo
+        - kana
+      additionalProperties: true
+      properties:
+        accent_phrases:
+          type: array
+          description: アクセント句のリスト
+          items:
+            type: object
+            description: Accent Phrase
+            additionalProperties: true
+        speedScale:
+          type: number
+          description: 全体の話速
+        pitchScale:
+          type: number
+          description: 全体の音高
+        intonationScale:
+          type: number
+          description: 全体の抑揚
+        volumeScale:
+          type: number
+          description: 全体の音量
+        prePhonemeLength:
+          type: number
+          description: 音声の前の無音時間
+        postPhonemeLength:
+          type: number
+          description: 音声の後の無音時間
+        pauseLength:
+          description: |
+            句読点などの無音時間。nullのときは無視される。デフォルト値はnull
+          anyOf:
+            - type: number
+            - type: "null"
+        pauseLengthScale:
+          type: number
+          description: 句読点などの無音時間（倍率）。デフォルト値は1
+          default: 1
+        outputSamplingRate:
+          type: integer
+          description: 音声データの出力サンプリングレート
+        outputStereo:
+          type: boolean
+          description: 音声データをステレオ出力するか否か
+        kana:
+          type: string
+          description: |
+            読み（かな）。
+            [読み取り専用] AquesTalk風記法によるテキスト。音声合成用のクエリとしては無視される

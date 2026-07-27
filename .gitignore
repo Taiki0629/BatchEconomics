@@ -1,0 +1,22 @@
+# 秘密情報
+.env
+
+# Claude Code ローカル設定
+.claude/settings.local.json
+
+# 使い捨て作業領域
+99_scratch/
+
+# 実験の生データ（公開時は集計結果のみを 50_output/ に整形する）
+40_test/logs/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# OS / エディタ
+.DS_Store
+Thumbs.db
