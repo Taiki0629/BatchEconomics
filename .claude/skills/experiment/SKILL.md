@@ -25,10 +25,15 @@ description: 実験の再現性を担保する規約。ログスキーマ（JSON
   "latency_ms": 1234,
   "input_tokens": 456,
   "output_tokens": 789,
+  "finish_reason": "stop",
   "parse_ok": true,
+  "fence_stripped": false,
+  "broken_lines": 0,
   "items_sent": 8,
   "items_returned": 8,
   "id_match_rate": 1.0,
+  "dup_id_count": 0,
+  "unknown_id_count": 0,
   "correct": 7,
   "per_item": [
     {"pos": 0, "item_id": "d-0012", "expected": "positive", "predicted": "positive", "correct": true}
@@ -39,7 +44,10 @@ description: 実験の再現性を担保する規約。ログスキーマ（JSON
 - `format` は `json_array` / `jsonl` の 2 値（プロンプト形式）
 - `attempt` は 1 始まり。リトライすると同じ (run_id, task, batch_size, trial) で attempt が増える
 - **`per_item` には必ず `pos`（バッチ内位置、0 始まり）を含める**。バッチ内位置による精度劣化（後方ほど壊れる仮説）の検証に必須
+- **`finish_reason` は必ず記録**。`length`（max_tokens 切断）由来の失敗は生成品質由来と別カテゴリで集計する
+- `latency_ms` はリクエスト送信〜レスポンス完了（送信間インターバルの sleep は含まない）。attempt ごとに記録
 - パース失敗時は `parse_ok: false`、`per_item` は復元できた分だけ記録し、復元不能なら空配列
+- 同一 id の複数返却は最初の 1 件のみ採用し `dup_id_count` に計上。未送信 id は無視し `unknown_id_count` に計上
 - `timestamp` は ISO 8601 / JST。`/budget` が当月集計に使う
 
 ## run ヘッダー（実行条件の記録)
