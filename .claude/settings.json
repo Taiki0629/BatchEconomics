@@ -42,11 +42,11 @@
       "Bash(npm ci)",
       "Bash(npm ls:*)",
       "Bash(npx tsc --noEmit)",
-      "Bash(npx tsc --noEmit:*)",
+      "Bash(npx tsc --noEmit:*)"
     ],
     "ask": [
       "Bash(npm publish:*)",
-      "Bash(npm uninstall:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [
       "Bash(git push --force:*)",

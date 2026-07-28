@@ -5,9 +5,14 @@ description: 実験の再現性を担保する規約。ログスキーマ（JSON
 
 # 実験の再現性規約
 
-## ログスキーマ（1リクエスト1行の JSONL）
+## ログスキーマ（write-ahead 方式の JSONL）
 
-保存先: `40_test/logs/<run_id>.jsonl`。1 回の API リクエスト（リトライも含む）につき 1 行。
+保存先: `40_test/logs/<run_id>.jsonl`。1 回の送信（リトライも含む）につき **2 行**:
+
+1. **`"event": "sent"` 行**: 送信直前に書く write-ahead 記録（run_id, timestamp, format, batch_size, trial, batch_index, attempt など）。応答前にクラッシュ・Ctrl-C・電源断が起きても消費の痕跡が残る
+2. **`"event": "result"` 行**: 応答後に書く結果記録（下記スキーマ）
+
+**消費集計（/budget）は "sent" 行を数える**。分析は "result" 行を使う。
 
 必須フィールド:
 
@@ -65,9 +70,14 @@ description: 実験の再現性を担保する規約。ログスキーマ（JSON
 - データのサンプリング・シャッフル・バッチへの割り付けはすべてシード付き `random.Random(seed)` 経由。グローバル乱数を使わない
 - 同じ (seed, データセット, 水準) なら同じバッチ構成が再現できること
 
+## 集計時の規約
+
+- unit（format × batch_size × trial × batch_index）ごとに**最後の成功 attempt のみ採用**する（チェックポイント書き込み直前のクラッシュで同一 unit の成功行が稀に重複しうるため）
+- 消費リクエスト数は "sent" 行の数（HTTPステータス・成否に関わらず全送信）
+
 ## チェックポイント（中断・再開）
 
-- 処理済みの単位（run_id + task + format + batch_size + trial）をチェックポイントファイル `40_test/logs/<run_id>.checkpoint.json` に逐次追記する
+- 処理済みの単位（format:batch_size:trial:batch_index）をチェックポイントファイル `40_test/logs/<run_id>.checkpoint.txt`（1行1キーの追記型）に逐次追記する
 - スクリプト再実行時はチェックポイントを読み、処理済みをスキップして続きから再開する
 - 1 リクエスト完了ごとにログとチェックポイントを flush する（クラッシュしても消費済みリクエストの記録が残ること。無償枠の消費記録が失われるのが最悪の事態）
 - Ctrl-C（SIGINT）で安全に停止できること（書きかけ行を作らない）
