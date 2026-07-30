@@ -326,7 +326,7 @@ JSON配列は配列が閉じないため`json.loads`が全体で失敗して1件
 
 #### 考察: 当初の仮説とは違う形で位置効果が出た
 
-生成が前から順に進んで打ち切られるので、結果自体は当然です。ただ、当初の仮説は「後方ほど誤答が増える」でした (長文脈で中間・後方の情報利用が弱まるという Lost in the Middle からの類推) 。
+生成が前から順に進んで打ち切られるので、結果自体は当然です。ただ、当初の仮説は「後方ほど誤答が増える」でした (長文脈で中間・後方の情報利用が弱まるという [Lost in the Middle](https://arxiv.org/abs/2307.03172) からの類推) 。
 
 実際には誤答はほとんど発生せず、**位置効果は誤答ではなく欠落として現れました**。切断されなければ後方まで正確に答えるし、切断されれば後方は存在しない。0か1かの現象でした。
 
@@ -499,3 +499,30 @@ uv run python 30_development/tally_budget.py
 そこで探索し直して分かったのが「壊れるのは予算が尽きたときだけ」で、さらに掘ると「必要な予算はバッチサイズにほとんど依存しない（思考のばらつきが支配的）」という、当初想定していなかった構造でした。
 
 結果として指針はシンプルになりました。**`max_tokens` を最悪ケースに合わせて大きく取る。そのうえでバッチは大きくする。出力はJSONLにする。** リクエスト課金では、これだけで効率が桁で変わります。
+
+
+## 参考文献
+
+### 公式ドキュメント（すべて2026年7月29日に確認）
+
+- [さくらのAI Engine サービスサイト](https://ai.sakura.ad.jp/sakura-ai/ai-engine/) — 無償枠の数値、提供モデル一覧、料金、プランごとの超過時の挙動
+- [さくらのAI Engine 利用手順](https://manual.sakura.ad.jp/cloud/ai-engine/02-howto.html) — APIエンドポイント、認証方式、アカウントトークンの発行手順
+- [さくらのAI Engine サービス基本情報](https://manual.sakura.ad.jp/cloud/ai-engine/01-basics.html) — RAG利用時の課金、解約条件
+- [さくらのAI Engine 操作ガイド](https://manual.sakura.ad.jp/cloud/ai-engine/03-operation-guide.html) — コントロールパネルでのモデル確認方法
+- [AI Engine Inference API リファレンス](https://manual.sakura.ad.jp/api/cloud/portal/?api=ai-engine-inference-api) — OpenAPI 仕様。`chat/completions` のパラメータとエラーコードはここを一次情報とした
+- [さくらのクラウド ご利用開始手順](https://manual.sakura.ad.jp/cloud/payment/signup.html) — 会員登録から支払い方法登録までの流れ
+- [さくらのクラウド お支払いについて](https://cloud.sakura.ad.jp/payment/about/) — 利用可能な支払い方法
+
+### 論文
+
+- Nelson F. Liu, Kevin Lin, John Hewitt, Ashwin Paranjape, Michele Bevilacqua, Fabio Petroni, Percy Liang.
+  [**Lost in the Middle: How Language Models Use Long Contexts**](https://arxiv.org/abs/2307.03172). TACL, 2023. (arXiv:2307.03172)
+  長い文脈では冒頭と末尾の情報がよく使われ、中間の情報の利用が落ちるという報告。結果⑦で「後方ほど誤答が増えるのではないか」と予想した根拠にしましたが、**今回の実験では誤答ではなく欠落として現れました**（そもそも出力タスクへの転移を検証したものではないので、外れて当然かもしれません）。
+
+### キャンペーン
+
+- OpenAI・Anthropic互換APIを無料で使おう！「さくらのAI Engine」3,000リクエスト使い切りチャレンジ — 本記事の参加先（開催期間 2026年7月14日〜8月25日）。[Qiita 公式イベント一覧](https://qiita.com/official-events)
+
+### 本記事のコードとデータ
+
+- [Taiki0629/BatchEconomics](https://github.com/Taiki0629/BatchEconomics) — 実験スクリプト、生ログ（JSONL）、集計・作図スクリプト、実験設計のドキュメント一式
